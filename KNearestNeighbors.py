@@ -5,7 +5,7 @@ from metric_distance import euclidean_distance, cosine_distance
 class KNearestNeighbors(object):
     def __init__(self, k=5, distance='euclidean'):
         # number of neighbors who vote
-        self.k = k
+        self.neighbors = k
         # distance metric to consider
         if distance == 'euclidean':
             self.distance_metric = euclidean_distance
@@ -24,25 +24,27 @@ class KNearestNeighbors(object):
         self.X_fit = X
         self.y_fit = y
 
-    def vote_from_distance(self, d):
+    def predict(self, x):
         '''
         INPUT:
-            - d: 1d np array of distancs
+            - x: 2d np array of features
+        OUTPUT:
+            - list of classifications
+        '''
+        return np.apply_along_axis(self._vote_from_distance, 1, x)
+        
+    def _vote_from_distance(self, m):
+        '''
+        INPUT:
+            - m: 1d np array of numeric measurements
         OUTPUT:
             - float of classification
         '''
-        mask = np.argsort(d)[0:self.k]
+        d = self.distance_metric(x, self.X_fit)
+        mask = np.argsort(d)[0:self.neighbors]
         votes = self.y_fit[mask]
         counts = Counter(votes)
         return count.most_common(1)[0][0]
 
-    def predict(self, X_pred):
-        '''
-        INPUT:
-            - X_pred: 2d np array of features
-        '''
-
-        return np.array([self.vote_from_distance(
-            self.distance_metric(m, self.X_fit)) for m in X_pred])
 
 
