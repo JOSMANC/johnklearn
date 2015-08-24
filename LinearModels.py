@@ -51,7 +51,7 @@ class LinearModels(object):
             x = self.add_intercept(x)
         self.number_features = x.shape[1]
         self.coeffs = np.zeros(self.number_features)
-        self.sgd_opt(x, y)
+        self.gd_opt(x, y)
 
     def predict(self, x):
         '''
@@ -88,7 +88,7 @@ class LinearModels(object):
         m = len(y)
         h = self.linear_hypothesis(x, betas)
         r = (h-y)
-        cost = np.dot(r.T, r) / 2. * m
+        cost = np.sum(r*r) / 2. * m
         cost += self.lamda * np.sum(betas ** 2.)
         return cost
 
@@ -99,7 +99,8 @@ class LinearModels(object):
         '''
         m = len(y)
         h = self.linear_hypothesis(x, betas)
-        gradient = -(1. / m) * np.dot(x.T, h-y)
+        r = (h-y)
+        gradient = -(1. / m) * np.dot(x.T, r)
         gradient -= 2. * self.lamda * betas
         return gradient
 
@@ -140,49 +141,79 @@ class LinearModels(object):
         return gradient
 
     ###############################################################
-    '''
-    INPUT:
-        - x: 2d np array of features
-    OUTPUT:
-        - 2d np array + 1 of features and intercept
-    '''
+
     def add_intercept(self, x):
+        '''
+        INPUT:
+            - x: 2d np array of features
+        OUTPUT:
+            - 2d np array + 1 of features and intercept
+        '''        
         return np.concatenate((np.ones((x.shape[0], 1)), x), axis=1)
 
     ###############################################################
-    '''
-    INPUT:
-        - x: 2d np array of features
-        - y: 1d np array of targets
-    - - Will set optimized self.coeff parameters
-    '''
+
 
     def sgd_opt(self, x, y):
-
-        rounds = 5
+        '''
+        INPUT:
+            - x: 2d np array of features
+            - y: 1d np array of targets
+        - - Will set optimized self.coeff parameters
+        '''
+        rounds = 150
         conver = .000001
-        alpha = 0.01
+        alpha = 10.0
         obs = x.shape[0]
         idx = np.arange(obs)
         cost0 = 1e10
+        cost1 = 0        
         count = 0
         # stop after more than count cycles of the data
         while count < rounds:
             np.random.shuffle(idx)
             x = x.take(idx, axis=0)
             y = y.take(idx)
-            cost1 = 0.0
             # compute gradient with respect to each observation
             for i in xrange(obs):
                 x1 = np.atleast_1d([x[i, :]])
                 y1 = np.atleast_1d([y[i]])
                 self.coeffs += alpha / obs * self.gradient(self.coeffs, x1, y1)
             cost1 += self.cost(self.coeffs, x, y)
-            diff = np.abs((cost1 - cost0) / 2.)
+            diff = np.abs((cost1 - cost0) / cost0)
             cost0 = cost1
             # stop if the change in gradient is smaller than threshold
             if diff < conver:
                 return
             count += 1
         return
-
+    
+    def gd_opt(self, x, y):
+        '''
+        INPUT:
+            - x: 2d np array of features
+            - y: 1d np array of targets
+        - - Will set optimized self.coeff parameters
+        '''
+        rounds = 15000
+        conver = .000001
+        alpha = 0.01
+        obs = x.shape[0]
+        idx = np.arange(obs)
+        cost0 = 1e10
+        cost1 = 0        
+        count = 0
+        
+        # stop after more than count cycles of the data
+        while count < rounds:
+            # compute gradient with respect to each observation
+            self.coeffs += alpha * self.gradient(self.coeffs, x, y)
+            cost1 = self.cost(self.coeffs, x, y)
+            diff = np.abs((cost1 - cost0) / cost0)
+            cost0 = cost1
+            print self.coeffs
+            # stop if the change in gradient is smaller than threshold
+            if diff < conver:
+                return
+            count += 1
+        return    
